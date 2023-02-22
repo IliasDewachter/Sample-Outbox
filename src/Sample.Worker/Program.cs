@@ -71,21 +71,19 @@ var host = Host.CreateDefaultBuilder(args)
             });
 
             x.SetKebabCaseEndpointNameFormatter();
-
-            x.AddConsumer<NotifyRegistrationConsumer>();
-            x.AddConsumer<SendRegistrationEmailConsumer>();
-            x.AddConsumer<AddEventAttendeeConsumer>();
-            x.AddConsumer<ValidateRegistrationConsumer, ValidateRegistrationConsumerDefinition>();
-            x.AddSagaStateMachine<RegistrationStateMachine, RegistrationState, RegistrationStateDefinition>()
-                .MongoDbRepository(r =>
-                {
-                    r.ClientFactory(provider => provider.GetRequiredService<IMongoClient>());
-                    r.DatabaseFactory(provider => provider.GetRequiredService<IMongoDatabase>());
-                });
+            
+            x.AddConsumer<RegistrationSubmittedConsumer, GenericConsumerDefinition<RegistrationSubmittedConsumer>>();
+            x.AddConsumer<RegistrationValidatedConsumer, GenericConsumerDefinition<RegistrationValidatedConsumer>>();
 
             x.UsingRabbitMq((context, cfg) =>
             {
-                cfg.ConfigureEndpoints(context);
+                // cfg.ConfigureEndpoints(context);  
+                
+                cfg.ReceiveEndpoint("RegistrationEndpoint", e =>
+                {
+                    e.ConfigureConsumer<RegistrationSubmittedConsumer>(context);
+                    e.ConfigureConsumer<RegistrationValidatedConsumer>(context);
+                });
             });
         });
     })
